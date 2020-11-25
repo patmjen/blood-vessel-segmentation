@@ -3,7 +3,7 @@
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-import vnet_dataset
+import datasets
 import rising.transforms as rtr
 from rising.random import UniformParameter
 from rising.loading import DataLoader
@@ -19,9 +19,9 @@ def passthrough(x, **kwargs):
     return x
 
 
-class conv_step(nn.Module):
+class ConvStep(nn.Module):
     def __init__(self, num_chans, dropout, do_rate):
-        super(conv_step, self).__init__()
+        super(ConvStep, self).__init__()
         self.conv_1 = nn.Conv3d(num_chans, num_chans, kernel_size=5, padding=2)
         self.batch_norm_1 = nn.BatchNorm3d(num_chans)
         self.prelu_1 = nn.PReLU(num_chans)
@@ -37,7 +37,7 @@ class conv_step(nn.Module):
 def make_nConvs(num_chans, num_convs, dropout, do_rate):
     layers = []
     for _ in range(num_convs):
-        layers.append(conv_step(num_chans, dropout, do_rate))
+        layers.append(ConvStep(num_chans, dropout, do_rate))
     return nn.Sequential(*layers)
 
 
@@ -176,14 +176,14 @@ class VNet(pl.LightningModule):
 
     def prepare_data(self):
         print("Preparing data ...")
-        # self.train_dataset = vnet_dataset.VnetDataset(pre_load=True, data_dir=self.hparams.data_dir+'train/')
-        self.train_dataset = vnet_dataset.RandomSupportedSubvolsDataset(
+        # self.train_dataset = datasest.VnetDataset(pre_load=True, data_dir=self.hparams.data_dir+'train/')
+        self.train_dataset = datasets.RandomSupportedSubvolsDataset(
             data_dir=self.hparams.data_dir+'train/',
             size=self.hparams.crop_size,
             samples_per_volume=self.hparams.samples_per_volume)
 
-        # self.val_dataset = vnet_dataset.VnetDataset(pre_load=True, data_dir=self.hparams.data_dir+'val/')
-        self.val_dataset = vnet_dataset.AllSubvolsDataset(
+        # self.val_dataset = datasets.VnetDataset(pre_load=True, data_dir=self.hparams.data_dir+'val/')
+        self.val_dataset = datasets.AllSubvolsDataset(
             data_dir=self.hparams.data_dir+'val/',
             size=self.hparams.crop_size)
 

@@ -3,5 +3,13 @@
 data
 logs
 
+# Python stuff
 __pycache__
 .ipynb_checkpoints
+
+# Virtual env 
+vesseg
+
+# HPC output
+*.out
+*.err

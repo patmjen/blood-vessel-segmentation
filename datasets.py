@@ -7,7 +7,7 @@ import numpy as np
 
 
 class SubvolsDataset(Dataset):
-    def __init__(self, data_dir, get_crop_fn):
+    def __init__(self, data_dir, get_crop_fn, pre_load=True):
         self.data_dir = data_dir
 
         files = [f for f in listdir(data_dir) if isfile(join(data_dir, f))]
@@ -28,9 +28,11 @@ class SubvolsDataset(Dataset):
         self.num_volumes = len(file_ids)
         self.get_crop_fn = get_crop_fn
 
-        # Load all volumes
-        self.volumes = [torch.stack(self.load_volume(i))
-                        for i in range(self.num_volumes)]
+        self.pre_load = pre_load
+        if self.pre_load:
+            # Load all volumes
+            self.volumes = [torch.stack(self.load_volume(i))
+                            for i in range(self.num_volumes)]
 
 
     def get_crop(self, mask_and_data, index):
@@ -47,7 +49,7 @@ class SubvolsDataset(Dataset):
         Gets a single sample
 
         Args:
-            index: index specifying which item to load
+            index: index specifying which sample to get.
 
         Returns:
             dict: the loaded sample
@@ -55,12 +57,29 @@ class SubvolsDataset(Dataset):
         return self.get_sample(index)
 
 
-    def load_volume(self, index: int) -> tuple:
+    def get_volume(self, index: int) -> tuple:
         """
-        Loads a single volume
+        Get or load a single volume.
 
         Args:
-            index: index specifying which item to load
+            index: index specifying which volume to get.
+
+        Returns:
+            np.array: loaded sample
+            np.array: loaded label mask
+        """
+        if self.pre_load:
+            return self.volumes[index]
+        else:
+            return self.load_volume(index)
+
+
+    def load_volume(self, index: int) -> tuple:
+        """
+        Loads a single volume.
+
+        Args:
+            index: index specifying which volume to load.
 
         Returns:
             np.array: loaded sample
@@ -80,8 +99,9 @@ class SubvolsDataset(Dataset):
 
 
 class RandomSubvolsDataset(SubvolsDataset):
-    def __init__(self, data_dir, size, dist=0, samples_per_volume=10):
-        super().__init__(data_dir, self.get_crop)
+    def __init__(self, data_dir, size, dist=0, samples_per_volume=10,
+                 pre_load=True):
+        super().__init__(data_dir, self.get_crop, pre_load=pre_load)
         self.size = size
         self.dist = dist
         self.samples_per_volume = samples_per_volume
@@ -89,7 +109,7 @@ class RandomSubvolsDataset(SubvolsDataset):
 
     def get_crop(self, index):
         vol_index = index // self.samples_per_volume
-        data_and_mask = self.volumes[vol_index]
+        data_and_mask = self.get_volume(vol_index)
         return F.random_crop(data_and_mask, self.size, self.dist)
 
 
@@ -104,8 +124,9 @@ class RandomSubvolsDataset(SubvolsDataset):
 
 
 class RandomSupportedSubvolsDataset(SubvolsDataset):
-    def __init__(self, data_dir, size, dist=0, samples_per_volume=10):
-        super().__init__(data_dir, self.get_crop)
+    def __init__(self, data_dir, size, dist=0, samples_per_volume=10,
+                 pre_load=True):
+        super().__init__(data_dir, self.get_crop, pre_load=pre_load)
         self.size = size
         self.dist = dist
         self.samples_per_volume = samples_per_volume
@@ -113,7 +134,7 @@ class RandomSupportedSubvolsDataset(SubvolsDataset):
 
     def get_crop(self, index):
         vol_index = index // self.samples_per_volume
-        data_and_mask = self.volumes[vol_index]
+        data_and_mask = self.get_volume(vol_index)
         # For now, just keep sampling random subvolumes until we find one with
         # labels. Since F.random_crop is fast, this is okay.
         while True:
@@ -133,8 +154,8 @@ class RandomSupportedSubvolsDataset(SubvolsDataset):
 
 
 class AllSubvolsDataset(SubvolsDataset):
-    def __init__(self, data_dir, size, step=None):
-        super().__init__(data_dir, self.get_crop)
+    def __init__(self, data_dir, size, step=None, pre_load=True):
+        super().__init__(data_dir, self.get_crop, pre_load=pre_load)
         self.size = np.asarray(size)
         if step is None:
             self.step = self.size
@@ -161,7 +182,7 @@ class AllSubvolsDataset(SubvolsDataset):
         # means overlap may increase. The alternative would be padding.
         corner = np.minimum(self.vol_size - self.size, corner)
 
-        data_and_mask = self.volumes[vol_index]
+        data_and_mask = self.get_volume(vol_index)
         return F.crop(data_and_mask, corner, self.size)
 
 

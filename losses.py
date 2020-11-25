@@ -23,7 +23,7 @@ class DiceLoss(nn.Module):
         super().__init__()
 
     def forward(self, input, target, smooth=1e-6):
-        iflat = torch.sigmoid(input).view(input.size(0), -1)
+        iflat = input.view(input.size(0), -1)
         tflat = target.view(target.size(0), -1)
         intersection = torch.sum(iflat * tflat)
         dice = 1.0 - (2.0 * intersection + smooth)/(torch.sum(iflat + tflat) + smooth)
@@ -36,7 +36,6 @@ class BCEDiceLoss(nn.Module):
 
     def forward(self, input, target, smooth=1e-5):
         bce = F.binary_cross_entropy_with_logits(input, target)
-        input = torch.sigmoid(input)
         num = target.size(0)
         input = input.view(num, -1)
         target = target.view(num, -1)

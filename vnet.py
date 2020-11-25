@@ -105,12 +105,14 @@ class UpTransition(nn.Module):
 class OutputTransition(nn.Module):
     def __init__(self, in_chans):
         super(OutputTransition, self).__init__()
-        self.conv_1 = nn.Conv3d(in_chans, 1, kernel_size=1)
-        self.bn_1 = nn.BatchNorm3d(1)
-        self.prelu_1 = nn.PReLU(1)
+        self.conv_1 = nn.Conv3d(in_chans, 2, kernel_size=1)
+        self.bn_1 = nn.BatchNorm3d(2)
+        self.prelu_1 = nn.PReLU(2)
+        # Input should be N x C x D x H x W and we want max over C dimension.
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
-        return self.prelu_1(self.bn_1(self.conv_1(x)))
+        return self.softmax(self.prelu_1(self.bn_1(self.conv_1(x))))
 
 
 class VNet(pl.LightningModule):
@@ -153,9 +155,10 @@ class VNet(pl.LightningModule):
         x, y = train_batch['data'], train_batch['label']
         pred = self.forward(x)
 
-        loss = getattr(losses, self.hparams.get('train_loss_function'))
+        loss = getattr(losses, self.hparams.get('train_loss_function'))()
 
-        res = loss()(pred, y)
+        pred_0, pred_1 = pred.split(1, dim=1)
+        res = 0.5 * (loss(pred_0, 1 - y) + loss(pred_1, y))
 
         self.log('train_loss', res)
         return {'loss': res}
@@ -164,9 +167,10 @@ class VNet(pl.LightningModule):
         x, y = val_batch['data'], val_batch['label']
         pred = self.forward(x)
 
-        loss = getattr(losses, self.hparams.get('val_loss_function'))
+        loss = getattr(losses, self.hparams.get('val_loss_function'))()
 
-        res = loss()(pred, y)
+        pred_0, pred_1 = pred.split(1, dim=1)
+        res = 0.5 * (loss(pred_0, 1 - y) + loss(pred_1, y))
 
         return {'val_loss': res}
 

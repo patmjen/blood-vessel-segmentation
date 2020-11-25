@@ -133,15 +133,20 @@ class RandomSupportedSubvolsDataset(SubvolsDataset):
 
 
 class AllSubvolsDataset(SubvolsDataset):
-    def __init__(self, data_dir, size):
+    def __init__(self, data_dir, size, step=None):
         super().__init__(data_dir, self.get_crop)
-        self.size = np.array(size)
+        self.size = np.asarray(size)
+        if step is None:
+            self.step = self.size
+        else:
+            self.step = np.asarray(step)
 
         # Compute number of subvolumes needed to cover a volume.
         # NOTE: this assumes all volumes have the same size.
         vol_size = np.array(self.volumes[0].size()[-3:])
         assert np.all(size <= vol_size)
-        self.samples_per_dim = vol_size // size + (vol_size % size > 0)
+        self.samples_per_dim = vol_size // self.step \
+                             + (vol_size % self.step > 0)
         self.samples_per_volume = self.samples_per_dim.prod()
         self.vol_size = vol_size
 
@@ -151,9 +156,9 @@ class AllSubvolsDataset(SubvolsDataset):
         sample_index = index % self.samples_per_volume
 
         corner = np.unravel_index(sample_index, self.samples_per_dim)
-        corner = np.array(corner) * self.size
+        corner = np.array(corner) * self.step
         # If a subvolume would exit the volume we move the corner back. This
-        # means two subvolumes may overlap. The alternative would be padding.
+        # means overlap may increase. The alternative would be padding.
         corner = np.minimum(self.vol_size - self.size, corner)
 
         data_and_mask = self.volumes[vol_index]

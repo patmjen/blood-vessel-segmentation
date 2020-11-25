@@ -153,22 +153,69 @@ class RandomSupportedSubvolsDataset(SubvolsDataset):
         return self.num_volumes * self.samples_per_volume
 
 
-class AllSubvolsDataset(SubvolsDataset):
-    def __init__(self, data_dir, size, step=None, pre_load=True):
-        super().__init__(data_dir, self.get_crop, pre_load=pre_load)
+class SubvolCorners:
+    """
+    Compute corner positions for moving over a volume with subvolumes of a
+    given size and step.
+    """
+    def __init__(self, vol_size, size, step=None):
+        """
+        Args:
+            vol_size: size of volume.
+            size: size of subvolume.
+            step: step length. Default is step=size.
+        """
+        self.vol_size = np.asarray(vol_size)
         self.size = np.asarray(size)
         if step is None:
             self.step = self.size
         else:
             self.step = np.asarray(step)
 
-        # Compute number of subvolumes needed to cover a volume.
-        # NOTE: this assumes all volumes have the same size.
-        vol_size = np.array(self.volumes[0].size()[-3:])
-        assert np.all(size <= vol_size)
         self.samples_per_dim = vol_size // self.step \
                              + (vol_size % self.step > 0)
-        self.samples_per_volume = self.samples_per_dim.prod()
+        self.total_samples = self.samples_per_dim.prod()
+
+
+    def __getitem__(self, index):
+        """
+        Get corner position for i'th subvolume.
+
+        Args:
+            index: subvolume index.
+
+        Returns:
+            np.array: corner position
+        """
+        corner = np.unravel_index(index, self.samples_per_dim)
+        corner = np.array(corner) * self.step
+        # If a subvolume would exit the volume we move the corner back. This
+        # means overlap may increase. The alternative would be padding.
+        corner = np.minimum(self.vol_size - self.size, corner)
+        return corner
+
+
+    def __iter__(self):
+        """Iterator over corner positions."""
+        for i in range(self.total_samples):
+            yield self[i]
+
+
+    def __len__(self):
+        """Total number of subvolumes in volume."""
+        return self.total_samples
+
+
+class AllSubvolsDataset(SubvolsDataset):
+    def __init__(self, data_dir, size, step=None, pre_load=True):
+        super().__init__(data_dir, self.get_crop, pre_load=pre_load)
+        # Compute number of subvolumes needed to cover a volume.
+        # NOTE: this assumes all volumes have the same size.
+        self.size = size
+        vol_size = np.array(self.volumes[0].size()[-3:])
+        assert np.all(size <= vol_size)
+        self.subvol_corners = SubvolCorners(vol_size, size, step)
+        self.samples_per_volume = len(self.subvol_corners)
         self.vol_size = vol_size
 
 
@@ -176,11 +223,7 @@ class AllSubvolsDataset(SubvolsDataset):
         vol_index = index // self.samples_per_volume
         sample_index = index % self.samples_per_volume
 
-        corner = np.unravel_index(sample_index, self.samples_per_dim)
-        corner = np.array(corner) * self.step
-        # If a subvolume would exit the volume we move the corner back. This
-        # means overlap may increase. The alternative would be padding.
-        corner = np.minimum(self.vol_size - self.size, corner)
+        corner = self.subvol_corners[sample_index]
 
         data_and_mask = self.get_volume(vol_index)
         return F.crop(data_and_mask, corner, self.size)

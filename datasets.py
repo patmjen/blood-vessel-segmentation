@@ -1,10 +1,11 @@
-from rising.loading import Dataset
-import rising.transforms.functional as F
 from os import listdir
 from os.path import isfile, join
+
 import torch
 import numpy as np
-
+from rising.loading import Dataset
+import rising.transforms.functional as F
+from tqdm import tqdm
 
 class SubvolsDataset(Dataset):
     def __init__(self, data_dir, get_crop_fn, pre_load=True):
@@ -237,6 +238,51 @@ class AllSubvolsDataset(SubvolsDataset):
             int: samples per epoch
         """
         return self.num_volumes * self.samples_per_volume
+
+
+class AllSupportedSubvolsDataset(SubvolsDataset):
+    def __init__(self, data_dir, size, pre_load=True):
+        super().__init__(data_dir, self.get_crop, pre_load=pre_load)
+        self.size = size
+        self.vol_size = np.array(self.get_volume(0).size()[-3:])
+
+        self.corner_lists = []
+        self.index_to_vol = []
+        print('Precomputing crops with labels ...')
+        for i in range(self.num_volumes):
+            corners = self._compute_supported_crop_corners(
+                self.get_volume(i)[1])
+            self.corner_lists.append(corners)
+            self.index_to_vol += [i] * len(corners)
+
+        corner_list_lengths = list(map(len, self.corner_lists))
+        print('Number of crops:', corner_list_lengths)
+        index_offsets = list(np.cumsum(corner_list_lengths))
+        self.corner_index_offsets = [0] + index_offsets[:-1]
+
+
+    def _compute_supported_crop_corners(self, labels):
+        """
+        Returns corners for all crops that contain labels
+        """
+        support = labels > 0
+        corners = []
+        for c in tqdm(SubvolCorners(self.vol_size, self.size)):
+            if (F.crop(support, c, self.size) > 0).any():
+                corners.append(c)
+        return corners
+
+
+    def get_crop(self, index):
+        vol_index = self.index_to_vol[index]
+        corner_index = index - self.corner_index_offsets[vol_index]
+        corner = self.corner_lists[vol_index][corner_index]
+        data_and_mask = self.get_volume(vol_index)
+        return F.crop(data_and_mask, corner, self.size)
+
+
+    def __len__(self):
+        return len(self.index_to_vol)
 
 
 class VnetDataset(Dataset):

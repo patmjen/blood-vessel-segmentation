@@ -93,7 +93,7 @@ class SubvolsDataset(Dataset):
 
         mask = np.load(self.data_dir + 'mask_' + file_id + '.npy')
         mask = mask[np.newaxis, ...]
-        mask = torch.from_numpy(mask).float()
+        mask = torch.from_numpy(mask)
 
         return data, mask
 

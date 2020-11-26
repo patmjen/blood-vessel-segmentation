@@ -30,6 +30,27 @@ class DiceLoss(nn.Module):
         return dice
 
 
+class SparseDiceLoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+
+    def forward(self, pred, labels, target_label, smooth=1e-6):
+        label_support = (labels > 0).type(pred.type())
+        target = (labels == target_label).type(pred.type())
+
+        # Flatten.
+        pred_flat = pred.view(pred.size(0), -1)
+        ls_flat = label_support.view(pred.size(0), -1)
+        target_flat = target.view(pred.size(0), -1)
+
+        # Compute Dice score.
+        intersection = torch.sum(pred_flat * target_flat)
+        denom = torch.sum((pred_flat + target_flat) * ls_flat)
+        dice = 2 * (intersection + smooth) / (denom + smooth)
+        return 1 - dice  # Subtract from 1 to convert into loss.
+
+
 class BCEDiceLoss(nn.Module):
     def __init__(self):
         super().__init__()

@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument('--lr', default=1e-3)
-    parser.add_argument('--data_dir', default=os.getcwd() + '/data/')
+    parser.add_argument('--data_dir', default=os.getcwd() + '/data_sparse/')
     parser.add_argument('--train_loss_function', default="DiceLoss")
     parser.add_argument('--val_loss_function', default="DiceLoss")
     parser.add_argument('--max_epochs', default=5000, type=int)

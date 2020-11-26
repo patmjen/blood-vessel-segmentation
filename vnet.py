@@ -155,10 +155,12 @@ class VNet(pl.LightningModule):
         x, y = train_batch['data'], train_batch['label']
         pred = self.forward(x)
 
-        loss = getattr(losses, self.hparams.get('train_loss_function'))()
+        # loss = getattr(losses, self.hparams.get('train_loss_function'))()
+        loss = losses.SparseDiceLoss()
 
         pred_0, pred_1 = pred.split(1, dim=1)
-        res = 0.5 * (loss(pred_0, 1 - y) + loss(pred_1, y))
+        # Label 1 is background and label 2 is vessel
+        res = 0.5 * (loss(pred_0, y, 2) + loss(pred_1, y, 1))
 
         self.log('train_loss', res)
         return {'loss': res}
@@ -167,10 +169,13 @@ class VNet(pl.LightningModule):
         x, y = val_batch['data'], val_batch['label']
         pred = self.forward(x)
 
-        loss = getattr(losses, self.hparams.get('val_loss_function'))()
+        # loss = getattr(losses, self.hparams.get('val_loss_function'))()
+        loss = losses.SparseDiceLoss()
 
         pred_0, pred_1 = pred.split(1, dim=1)
-        res = 0.5 * (loss(pred_0, 1 - y) + loss(pred_1, y))
+        # Label 1 is background and label 2 is vessel
+
+        res = 0.5 * (loss(pred_0, y, 2) + loss(pred_1, y, 1))
 
         return {'val_loss': res}
 
@@ -187,7 +192,7 @@ class VNet(pl.LightningModule):
             samples_per_volume=self.hparams.samples_per_volume)
 
         # self.val_dataset = datasets.VnetDataset(pre_load=True, data_dir=self.hparams.data_dir+'val/')
-        self.val_dataset = datasets.AllSubvolsDataset(
+        self.val_dataset = datasets.AllSupportedSubvolsDataset(
             data_dir=self.hparams.data_dir+'val/',
             size=self.hparams.crop_size)
 

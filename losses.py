@@ -47,7 +47,7 @@ class SparseDiceLoss(nn.Module):
         # Compute Dice score.
         intersection = torch.sum(pred_flat * target_flat)
         denom = torch.sum((pred_flat + target_flat) * ls_flat)
-        dice = 2 * (intersection + smooth) / (denom + smooth)
+        dice = (2 * intersection + smooth) / (denom + smooth)
         return 1 - dice  # Subtract from 1 to convert into loss.
 
 

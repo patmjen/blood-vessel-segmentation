@@ -93,6 +93,18 @@ class Rbf(object):
         return a0
 
 
+    def _compute_weights(self):
+        if self._target_dim > 1:
+            # we first factorize the matrix
+            self.nodes = torch.zeros(self.N, self._target_dim,
+                                     dtype=self.di.dtype, device=self.device)
+            lu_data = torch.lu(self.A)
+            for i in range(self._target_dim):
+                self.nodes[:, i] = torch.lu_solve(self.di[:, i].unsqueeze(0).T,
+                                                  *lu_data).squeeze()
+        else:
+            self.nodes = torch.solve(self.A, self.di)[0]
+
     def __init__(self, *args, **kwargs):
         # `args` can be a variable number of arrays; we flatten them and store
         # them as a single 2-D array `xi` of shape (n_args-1, array_size),
@@ -140,17 +152,22 @@ class Rbf(object):
         for item, value in kwargs.items():
             setattr(self, item, value)
 
-        # Compute weights
-        if self._target_dim > 1:  # If we have more than one target dimension,
-            # we first factorize the matrix
-            self.nodes = torch.zeros(self.N, self._target_dim,
-                                     dtype=self.di.dtype, device=self.device)
-            lu_data = torch.lu(self.A)
-            for i in range(self._target_dim):
-                self.nodes[:, i] = torch.lu_solve(self.di[:, i].unsqueeze(0).T,
-                                                  *lu_data).squeeze()
-        else:
-            self.nodes = torch.solve(self.A, self.di)[0]
+        self._compute_weights()
+
+
+    def set_values(self, new_di):
+        new_di = torch.as_tensor(new_di, device=self.device)
+        if self.mode == '1-D':
+            new_di = new_di.flatten()
+
+        if new_di.shape[0] != self.di.shape[0]:
+            raise ValueError("Number of new values must be equal to current.")
+
+        if self.mode == 'N-D':
+            self._target_dim = new_di.shape[-1]
+
+        self.di = new_di
+        self._compute_weights()
 
 
     @property

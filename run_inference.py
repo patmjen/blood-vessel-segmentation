@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 import os
 from os import listdir
-from os.path import isfile, join
+from os.path import isfile, join, basename
 
 import torch
 import numpy as np
@@ -34,8 +34,7 @@ def main(args):
 
     for i, filename in enumerate(files):
         print('File', i + 1, ':', filename)
-        full_filename = join(args.data_dir, filename)
-        data = torch.from_numpy(np.load(full_filename))
+        data = torch.from_numpy(np.load(join(args.data_dir, filename)))
         vol_size = data.shape
         data = data.unsqueeze(0).unsqueeze(0)
 
@@ -57,12 +56,14 @@ def main(args):
         pred = pred.squeeze()
         mask = mask.squeeze()
 
+        out_filename = join(args.save_dir,
+                            basename(args.checkpoint) + '.' + filename)
         if args.file_type == 'npy':
-            np.save(full_filename + '.pred', pred.numpy())
-            np.save(full_filename + '.mask', mask.numpy())
+            np.save(out_filename + '.pred', pred.numpy())
+            np.save(out_filename + '.mask', mask.numpy())
         elif args.file_type == 'raw':
-            pred.numpy().tofile(full_filename + '.pred.raw')
-            mask.numpy().tofile(full_filename + '.mask.raw')
+            pred.numpy().tofile(out_filename + '.pred.raw')
+            mask.numpy().tofile(out_filename + '.mask.raw')
         else:
             raise ValueError('Invalid file type: {}'.format(args.file_type))
 

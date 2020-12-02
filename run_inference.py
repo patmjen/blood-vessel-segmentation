@@ -40,7 +40,7 @@ def main(args):
         data = data.unsqueeze(0).unsqueeze(0)
 
         pred = torch.zeros((2,) + vol_size, dtype=torch.float32)
-        mask = torch.zeros(vol_size, dtype=torch.bool).unsqueeze(0)
+        mask = torch.zeros((1,) + vol_size, dtype=torch.bool)
 
         for c in tqdm(SubvolCorners(vol_size, size, step)):
             sub_data = F.crop(data, c, size)

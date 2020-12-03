@@ -199,4 +199,7 @@ class Rbf(object):
             shp = args[0].shape
         xa = torch.stack([a.flatten() for a in args]).type(torch.float32)
         r = self._call_norm(xa, self.xi)
-        return torch.mm(self._function(r), self.nodes).reshape(shp)
+        out = torch.zeros_like(xa)
+        for i, n in enumerate(self.nodes):
+            out += (self._function(r[:, i]).expand(len(n), -1).T * n).T
+        return out.reshape(shp)

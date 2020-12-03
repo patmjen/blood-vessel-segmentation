@@ -49,14 +49,13 @@ def elastic_deform_3d(input, grid_spacing, std, interp_mode='nearest'):
         interp_mode = 'bilinear'  # Change to fit with grid_sample naming
 
     input = torch.as_tensor(input)
+    output = torch.empty_like(input)
     device = input.device
     vol_size = input.size()[-3:]
     disp_grid = torch.meshgrid(
         torch.arange(0, vol_size[0] + 1, grid_spacing, device=device),
         torch.arange(0, vol_size[1] + 1, grid_spacing, device=device),
         torch.arange(0, vol_size[2] + 1, grid_spacing, device=device))
-
-    output = torch.empty_like(input)
 
     domain_grid = torch.meshgrid(
         torch.arange(vol_size[0], dtype=torch.float32, device=device),

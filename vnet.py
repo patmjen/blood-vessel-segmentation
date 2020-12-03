@@ -12,7 +12,7 @@ from init_weights import init_weights
 import losses
 import torch_summary
 from argparse import ArgumentParser
-from random_cropper import BatchRandomCrop
+from elasdeform3d.rising import ElasticDeformer3d
 
 
 def passthrough(x, **kwargs):
@@ -201,13 +201,13 @@ class VNet(pl.LightningModule):
         transforms_augment = []
 
         #transforms_augment_cpu.append(rtr.intensity.RandomAddValue(UniformParameter(-0.2, 0.2)))
-        # transforms_augment_cpu.append(BatchRandomCrop(self.hparams.crop_size, bs=self.hparams.batch_size, dist=0, keys=('data', 'label')))
-        # transforms_augment_cpu.append(rtr.crop.RandomCrop(self.hparams.crop_size, dist=0, keys=('data', 'label')))
         #cpu_transforms = Compose(transforms_augment_cpu)
 
-        #transforms_augment.append(rtr.GaussianNoise(0., 0.2))
-        transforms_augment.append(rtr.Rot90(dims=(0, 1, 2), keys=('data', 'label')))
-        transforms_augment.append(rtr.Mirror(dims=(0, 1, 2), keys=('data', 'label')))
+        keys = ('data', 'label')
+        # transforms_augment.append(rtr.GaussianNoise(0., 0.05))
+        transforms_augment.append(rtr.Rot90(dims=(0, 1, 2), keys=keys))
+        transforms_augment.append(rtr.Mirror(dims=(0, 1, 2), keys=keys))
+        transforms_augment.append(ElasticDeformer3d(32, 4, keys=keys))
         #transforms_augment.append(rtr.BaseAffine(
         #    scale=UniformParameter(0.95, 1.05),
         #    rotation=UniformParameter(-45, 45), degree=True,

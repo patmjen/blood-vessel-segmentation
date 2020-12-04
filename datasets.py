@@ -88,11 +88,11 @@ class SubvolsDataset(Dataset):
         """
         file_id = self.file_ids[index]
 
-        data = np.load(self.data_dir + 'data_' + file_id + '.npy')
+        data = np.load(join(self.data_dir, 'data_' + file_id + '.npy'))
         data = data[np.newaxis, ...]
         data = torch.from_numpy(data).float()
 
-        mask = np.load(self.data_dir + 'mask_' + file_id + '.npy')
+        mask = np.load(join(self.data_dir, 'mask_' + file_id + '.npy'))
         mask = mask[np.newaxis, ...]
         mask = torch.from_numpy(mask)
 
@@ -373,11 +373,11 @@ class VnetDataset(Dataset):
         """
         file_id = self.file_ids[index]
 
-        data = np.load(self.data_dir + 'data_' + file_id + '.npy')
+        data = np.load(join(self.data_dir, 'data_' + file_id + '.npy'))
         data = data[np.newaxis, ...]
         data = torch.from_numpy(data).float()
 
-        mask = np.load(self.data_dir + 'mask_' + file_id + '.npy')
+        mask = np.load(join(self.data_dir, 'mask_' + file_id + '.npy'))
         mask = mask[np.newaxis, ...]
         mask = torch.from_numpy(mask).float()
 

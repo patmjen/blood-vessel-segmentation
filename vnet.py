@@ -1,6 +1,7 @@
 # Modified code from https://github.com/mattmacy/vnet.pytorch
 
 import os
+from os.path import join
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
@@ -126,7 +127,7 @@ class VNet(pl.LightningModule):
         parser.add_argument('--batch_size', default=1, type=int)
         parser.add_argument('--crop_size', default=128, type=int)
         parser.add_argument('--samples_per_volume', default=10, type=int)
-        parser.add_argument('--data_dir', default=cwd + '/data_sparse/')
+        parser.add_argument('--data_dir', default=join(cwd, 'data', 'sparse'))
         return parser
 
     def __init__(self, hparams):
@@ -197,13 +198,13 @@ class VNet(pl.LightningModule):
         print("Preparing data ...")
         # self.train_dataset = datasest.VnetDataset(pre_load=True, data_dir=self.hparams.data_dir+'train/')
         self.train_dataset = datasets.RandomSupportedSubvolsDataset(
-            data_dir=self.hparams.data_dir+'train/',
+            data_dir=join(self.hparams.data_dir, 'train'),
             size=self.hparams.crop_size,
             samples_per_volume=self.hparams.samples_per_volume)
 
         # self.val_dataset = datasets.VnetDataset(pre_load=True, data_dir=self.hparams.data_dir+'val/')
         self.val_dataset = datasets.AllSupportedSubvolsDataset(
-            data_dir=self.hparams.data_dir+'val/',
+            data_dir=join(self.hparams.data_dir, 'val/'),
             size=self.hparams.crop_size)
 
     def train_dataloader(self):

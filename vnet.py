@@ -176,8 +176,8 @@ class VNet(pl.LightningModule):
         # Label 1 is background and label 2 is vessel
         res = 0.5 * (loss(pred_0, y, 2) + loss(pred_1, y, 1))
 
-        self.log('train_loss', res)
-        return {'loss': res}
+        self.log('train_loss', res, on_step=True, prog_bar=True, logger=True)
+        return res
 
     def validation_step(self, val_batch, batch_idx):
         x, y = val_batch['data'], val_batch['label']
@@ -190,11 +190,8 @@ class VNet(pl.LightningModule):
 
         res = 0.5 * (loss(pred_0, y, 2) + loss(pred_1, y, 1))
 
-        return {'val_loss': res}
-
-    def validation_epoch_end(self, outputs):
-        avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
-        self.log('val_loss', avg_loss)
+        self.log('val_loss', res, prog_bar=True, logger=True)
+        return res
 
     def prepare_data(self):
         print("Preparing data ...")

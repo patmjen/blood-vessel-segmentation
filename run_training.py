@@ -17,20 +17,18 @@ def main(hparams):
         prefix=''
     )
 
-    tb_logger = loggers.TensorBoardLogger(save_dir=hparams.logger_save_dir, name=hparams.experiment_name)
+    tb_logger = loggers.TensorBoardLogger(save_dir=hparams.logger_save_dir,
+                                          name=hparams.experiment_name)
     logger_list = [tb_logger]
     if hparams.checkpoint_path is None:
         model = vnet.VNet(hparams)
-        trainer = Trainer(gpus=hparams.gpus, logger=logger_list, max_epochs=hparams.max_epochs,
-                      checkpoint_callback=checkpoint_callback,
-                      accumulate_grad_batches=hparams.accumulate_grad_batches,
-                      replace_sampler_ddp=False)
     else:
         model = vnet.VNet.load_from_checkpoint(hparams.checkpoint_path)
-        trainer = Trainer(gpus=hparams.gpus, logger=logger_list, max_epochs=hparams.max_epochs,
-                      checkpoint_callback=checkpoint_callback,
-                      accumulate_grad_batches=hparams.accumulate_grad_batches,
-                      replace_sampler_ddp=False)
+
+    trainer = Trainer.from_argparse_args(
+        hparams,
+        checkpoint_callback=checkpoint_callback,
+        logger=logger_list)
 
     trainer.fit(model)
 
@@ -40,25 +38,19 @@ if __name__ == '__main__':
     dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
 
     parser = ArgumentParser()
-    parser.add_argument('--lr', default=1e-3)
-    parser.add_argument('--data_dir', default=os.getcwd() + '/data_sparse/')
-    parser.add_argument('--train_loss_function', default="DiceLoss")
-    parser.add_argument('--val_loss_function', default="DiceLoss")
-    parser.add_argument('--max_epochs', default=5000, type=int)
     parser.add_argument('--logger_save_dir', default='D:/tmp/logs/november/')
     parser.add_argument('--monitor_loss', default='val_loss')
     parser.add_argument('--save_top_k', default=1, type=int)
-    parser.add_argument('--experiment_name', default='vnet_testing')
+    parser.add_argument('--experiment_name', default='vnet_testing_sparse')
     parser.add_argument('--date_time', default=dt_string)
-    parser.add_argument('--gpus', default=1)
-    parser.add_argument('--accumulate_grad_batches', default=1, type=int)
     parser.add_argument('--checkpoint_path', default=None)
-    parser.add_argument('--num_loader_workers', default=0, type=int)
-    parser.add_argument('--batch_size', default=1, type=int)
-    parser.add_argument('--crop_size', default=128, type=int)
-    parser.add_argument('--samples_per_volume', default=10, type=int)
-    hparams = parser.parse_args()
 
-    hparams.crop_size = (hparams.crop_size,) * 3
+    parser = vnet.VNet.add_model_specific_args(parser)
+    parser = Trainer.add_argparse_args(parser)
+
+    # Override pytorch_lightning defaults
+    parser.set_defaults(max_epochs=5000, gpus=1)
+
+    hparams = parser.parse_args()
 
     main(hparams)

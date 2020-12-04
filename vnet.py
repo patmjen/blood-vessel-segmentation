@@ -1,5 +1,6 @@
 # Modified code from https://github.com/mattmacy/vnet.pytorch
 
+import os
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
@@ -116,10 +117,24 @@ class OutputTransition(nn.Module):
 
 
 class VNet(pl.LightningModule):
+    @staticmethod
+    def add_model_specific_args(parent_parser):
+        cwd = os.getcwd()
+        parser = ArgumentParser(parents=[parent_parser], add_help=False)
+        parser.add_argument('--lr', default=1e-3, type=float)
+        parser.add_argument('--num_loader_workers', default=0, type=int)
+        parser.add_argument('--batch_size', default=1, type=int)
+        parser.add_argument('--crop_size', default=128, type=int)
+        parser.add_argument('--samples_per_volume', default=10, type=int)
+        parser.add_argument('--data_dir', default=cwd + '/data_sparse/')
+        return parser
+
     def __init__(self, hparams):
         super(VNet, self).__init__()
 
-        self.hparams = hparams
+        hparams.crop_size = (hparams.crop_size,) * 3
+
+        self.save_hyperparameters(hparams)
 
         self.in_tr = InputTransition(16)
         self.down_tr32 = DownTransition(16, 2)
@@ -155,7 +170,6 @@ class VNet(pl.LightningModule):
         x, y = train_batch['data'], train_batch['label']
         pred = self.forward(x)
 
-        # loss = getattr(losses, self.hparams.get('train_loss_function'))()
         loss = losses.SparseDiceLoss()
 
         pred_0, pred_1 = pred.split(1, dim=1)
@@ -169,7 +183,6 @@ class VNet(pl.LightningModule):
         x, y = val_batch['data'], val_batch['label']
         pred = self.forward(x)
 
-        # loss = getattr(losses, self.hparams.get('val_loss_function'))()
         loss = losses.SparseDiceLoss()
 
         pred_0, pred_1 = pred.split(1, dim=1)

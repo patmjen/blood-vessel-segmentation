@@ -6,8 +6,9 @@ logs
 # Python stuff
 __pycache__
 .ipynb_checkpoints
+*.ipynb
 
-# Virtual env 
+# Virtual env
 vesseg
 
 # HPC output

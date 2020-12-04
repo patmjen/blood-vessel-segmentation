@@ -9,13 +9,14 @@ import pytorch_lightning as pl
 
 
 def main(hparams):
+    today = datetime.datetime.now().strftime('%d.%m.%Y')
     checkpoint_callback = ModelCheckpoint(
-        filepath=hparams.logger_save_dir+hparams.experiment_name+'/ckpts/',
+        dirpath=hparams.logger_save_dir+hparams.experiment_name+'/ckpts/',
+        filename='ckpt-' + today + '-{epoch:02d}-{val_loss:2f}',
         save_top_k=hparams.save_top_k,
         verbose=True,
         monitor=hparams.monitor_loss,
-        prefix=''
-    )
+        prefix='')
 
     tb_logger = loggers.TensorBoardLogger(save_dir=hparams.logger_save_dir,
                                           name=hparams.experiment_name)
@@ -27,7 +28,7 @@ def main(hparams):
 
     trainer = Trainer.from_argparse_args(
         hparams,
-        checkpoint_callback=checkpoint_callback,
+        callbacks=[checkpoint_callback],
         logger=logger_list)
 
     trainer.fit(model)

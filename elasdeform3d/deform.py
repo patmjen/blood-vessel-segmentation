@@ -85,7 +85,7 @@ def elastic_deform_3d(input, grid_spacing, std, interp_mode='nearest'):
     sample_grid = 2 * sample_grid - 1  # Coords. must be in [-1, 1]
     sample_grid = sample_grid.expand(input.shape[0], -1, -1, -1, -1)
     output = F.grid_sample(input, sample_grid, mode=interp_mode,
-                           padding_mode='border')
+                           padding_mode='border', align_corners=False)
 
     return output.reshape(input.size())
 

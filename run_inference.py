@@ -2,13 +2,18 @@ from argparse import ArgumentParser
 import os
 from os import listdir
 from os.path import isfile, join, basename
+import warnings
 
 import torch
 import numpy as np
 import rising.transforms.functional as F
 from tqdm import tqdm
 
-import vnet
+with warnings.catch_warnings():
+    # Avoid warnings from tensorboard uing deprecated functions
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+    import vnet
+
 from datasets import SubvolCorners
 
 def main(args):

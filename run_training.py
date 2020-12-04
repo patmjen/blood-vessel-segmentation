@@ -36,14 +36,14 @@ def main(hparams):
 
 if __name__ == '__main__':
     now = datetime.datetime.now()
-    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+    dt_str = now.strftime("%d-%m-%Y_%H-%M-%S")
 
     parser = ArgumentParser()
-    parser.add_argument('--logger_save_dir', default='D:/tmp/logs/november/')
+    parser.add_argument('--logger_save_dir', default='D:/tmp/logs/december/')
     parser.add_argument('--monitor_loss', default='val_loss')
     parser.add_argument('--save_top_k', default=1, type=int)
-    parser.add_argument('--experiment_name', default='vnet_testing_sparse')
-    parser.add_argument('--date_time', default=dt_string)
+    parser.add_argument('--experiment_name', default='vnet_testing_' + dt_str)
+    parser.add_argument('--date_time', default=dt_str)
     parser.add_argument('--checkpoint_path', default=None)
 
     parser = vnet.VNet.add_model_specific_args(parser)

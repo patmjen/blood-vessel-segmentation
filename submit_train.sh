@@ -33,4 +33,13 @@ source init.sh
 
 nvidia-smi
 
-python run_training.py --experiment_name=vnet_train_avizo_long --max_epochs=5000 --num_loader_workers=0 --logger_save_dir=/work1/patmjen/logs/november --samples_per_volume=24 --batch_size=2
+python run_training.py \
+    --experiment_name=vnet_train_sparse_3_lr=1e-3 \
+    --lr=1e-3 \
+    --max_epochs=10000 \
+    --num_loader_workers=0 \
+    --logger_save_dir=/work1/patmjen/logs/december/ \
+    --data_dir=/work1/patmjen/data/sparse/ \
+    --samples_per_volume=128 \
+    --batch_size=2 \
+    --progress_bar_refresh_rate=0

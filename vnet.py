@@ -130,10 +130,11 @@ class VNet(pl.LightningModule):
         parser.add_argument('--data_dir', default=join(cwd, 'data', 'sparse'))
         return parser
 
-    def __init__(self, hparams):
+    def __init__(self, **hparams):
         super(VNet, self).__init__()
 
-        hparams.crop_size = (hparams.crop_size,) * 3
+        if not hasattr(hparams['crop_size'], '__len__'):
+            hparams['crop_size'] = (hparams['crop_size'],) * 3
 
         self.save_hyperparameters(hparams)
 

@@ -9,7 +9,7 @@ def weights_init_normal(m):
         init.normal_(m.weight.data, 0.0, 0.02)
     elif classname.find('Linear') != -1:
         init.normal_(m.weight.data, 0.0, 0.02)
-    elif classname.find('BatchNorm') != -1:
+    elif classname.find('BatchNorm') != -1 or classname.find('GroupNorm') != -1:
         init.normal_(m.weight.data, 1.0, 0.02)
         init.constant_(m.bias.data, 0.0)
 
@@ -21,7 +21,7 @@ def weights_init_xavier(m):
         init.xavier_normal_(m.weight.data, gain=1)
     elif classname.find('Linear') != -1:
         init.xavier_normal_(m.weight.data, gain=1)
-    elif classname.find('BatchNorm') != -1:
+    elif classname.find('BatchNorm') != -1 or classname.find('GroupNorm') != -1:
         init.normal_(m.weight.data, 1.0, 0.02)
         init.constant_(m.bias.data, 0.0)
 
@@ -33,7 +33,7 @@ def weights_init_kaiming(m):
         init.kaiming_normal_(m.weight.data, a=0, mode='fan_in')
     elif classname.find('Linear') != -1:
         init.kaiming_normal_(m.weight.data, a=0, mode='fan_in')
-    elif classname.find('BatchNorm') != -1:
+    elif classname.find('BatchNorm') != -1 or classname.find('GroupNorm') != -1:
         init.normal_(m.weight.data, 1.0, 0.02)
         init.constant_(m.bias.data, 0.0)
 
@@ -45,7 +45,7 @@ def weights_init_orthogonal(m):
         init.orthogonal_(m.weight.data, gain=1)
     elif classname.find('Linear') != -1:
         init.orthogonal_(m.weight.data, gain=1)
-    elif classname.find('BatchNorm') != -1:
+    elif classname.find('BatchNorm') != -1 or classname.find('GroupNorm') != -1:
         init.normal_(m.weight.data, 1.0, 0.02)
         init.constant_(m.bias.data, 0.0)
 

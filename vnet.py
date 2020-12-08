@@ -21,11 +21,24 @@ def passthrough(x, **kwargs):
     return x
 
 
+def get_num_groups(num_chans):
+    #if num_chans / 32 >= 8:
+    #    # Ideally, we want 32 groups with at least 8 channels each
+    #    return 32
+    #elif num_chans / 8 >= 2:
+    #    # Else we want at least two groups with 8 channels each
+    #    return num_chans // 8
+    #else:
+    #    # Else we just do two groups unless we have less than 4 channels
+    #    return 2 if num_chans >= 4 else num_chans
+    return max(num_chans, num_chans // 32)
+
+
 class ConvStep(nn.Module):
     def __init__(self, num_chans, dropout, do_rate):
         super(ConvStep, self).__init__()
         self.conv_1 = nn.Conv3d(num_chans, num_chans, kernel_size=5, padding=2)
-        self.batch_norm_1 = nn.BatchNorm3d(num_chans)
+        self.batch_norm_1 = nn.GroupNorm(get_num_groups(num_chans), num_chans)
         self.prelu_1 = nn.PReLU(num_chans)
         self.do_1 = passthrough
         if dropout:
@@ -47,7 +60,7 @@ class InputTransition(nn.Module):
     def __init__(self, out_cha):
         super(InputTransition, self).__init__()
         self.conv_1 = nn.Conv3d(1, out_cha, kernel_size=5, padding=2)
-        self.batch_norm_1 = nn.BatchNorm3d(out_cha)
+        self.batch_norm_1 = nn.GroupNorm(get_num_groups(out_cha), out_cha)
         self.prelu_1 = nn.PReLU(out_cha)
 
     def forward(self, x):
@@ -65,7 +78,7 @@ class DownTransition(nn.Module):
         super(DownTransition, self).__init__()
         out_chans = 2*in_chans
         self.down_conv = nn.Conv3d(in_chans, out_chans, kernel_size=2, stride=2)
-        self.batch_norm_1 = nn.BatchNorm3d(out_chans)
+        self.batch_norm_1 = nn.GroupNorm(get_num_groups(out_chans), out_chans)
         self.prelu_1 = nn.PReLU(out_chans)
         self.do_1 = passthrough
         if dropout:
@@ -88,7 +101,7 @@ class UpTransition(nn.Module):
         # out_chans_half = out_chans
         self.up_conv = nn.ConvTranspose3d(
             in_chans, out_chans_half, kernel_size=2, stride=2)
-        self.batch_norm_1 = nn.BatchNorm3d(out_chans_half)
+        self.batch_norm_1 = nn.GroupNorm(get_num_groups(out_chans_half), out_chans_half)
         self.prelu_1 = nn.PReLU(out_chans_half)
         self.do_1 = passthrough
         if dropout:
@@ -108,7 +121,7 @@ class OutputTransition(nn.Module):
     def __init__(self, in_chans):
         super(OutputTransition, self).__init__()
         self.conv_1 = nn.Conv3d(in_chans, 2, kernel_size=1)
-        self.bn_1 = nn.BatchNorm3d(2)
+        self.bn_1 = nn.GroupNorm(get_num_groups(2), 2)
         self.prelu_1 = nn.PReLU(2)
         # Input should be N x C x D x H x W and we want max over C dimension.
         self.softmax = nn.Softmax(dim=1)
@@ -154,6 +167,8 @@ class VNet(pl.LightningModule):
             if isinstance(m, nn.Conv3d):
                 init_weights(m, init_type='kaiming')
             elif isinstance(m, nn.BatchNorm3d):
+                init_weights(m, init_type='kaiming')
+            elif isinstance(m, nn.GroupNorm):
                 init_weights(m, init_type='kaiming')
 
     def forward(self, x):

@@ -1,44 +1,46 @@
 import os
-import vnet
-from pytorch_lightning import Trainer
-from argparse import ArgumentParser
 import datetime
+from argparse import ArgumentParser
+
+from pytorch_lightning import Trainer
+
+import vnet
+import cli
 
 
 def main(hparams):
-
     if hparams.checkpoint_path is None:
-        model = vnet.VNet(hparams)
-        trainer = Trainer(gpus=hparams.gpus, accumulate_grad_batches=hparams.accumulate_grad_batches)
+        model = vnet.VNet(**vars(hparams))
     else:
-        model = vnet.VNet.load_from_checkpoint(hparams.checkpoint_path)
-        trainer = Trainer(gpus=hparams.gpus, accumulate_grad_batches=hparams.accumulate_grad_batches)
+        # If any arguments were explicitly given, then force those
+        seen_params = { a : getattr(hparams, a) for a in hparams.seen_args_ }
+        checkpoint_path = seen_params.pop('checkpoint_path')
+        model = vnet.VNet.load_from_checkpoint(checkpoint_path, **seen_params)
 
-    lr_finder = trainer.lr_find(model, min_lr=hparams.min_lr, max_lr=hparams.max_lr)
-    suggested_lr = lr_finder.suggestion()
-    print("Suggested learning rate: ", suggested_lr)
+    trainer = Trainer.from_argparse_args(hparams, auto_lr_find=True)
+
+    trainer.tune(model)
 
 
 if __name__ == '__main__':
     now = datetime.datetime.now()
-    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+    dt_str = now.strftime("%d-%m-%Y_%H-%M-%S")
 
     parser = ArgumentParser()
-    parser.add_argument('--lr', default=1e-5)
-    parser.add_argument('--min_lr', default=1e-9)
-    parser.add_argument('--max_lr', default=1)
-    parser.add_argument('--data_dir', default='/home/ohansen/Documents/data/new_data/npy_512_noisy_student/')
-    parser.add_argument('--train_loss_function', default="DiceLoss")
-    parser.add_argument('--val_loss_function', default="DiceLoss")
-    parser.add_argument('--max_epochs', default=5000)
-    parser.add_argument('--logger_save_dir', default=os.getcwd()+'/logs/november/')
-    parser.add_argument('--monitor_loss', default='val_loss')
-    parser.add_argument('--save_top_k', default=3)
-    parser.add_argument('--experiment_name', default='vnet_512_valsub2_diceloss_rc_allgood_datasets_from_ckpt_1970_1012_2nd_try')
-    parser.add_argument('--date_time', default=dt_string)
-    parser.add_argument('--gpus', default=1)
-    parser.add_argument('--accumulate_grad_batches', default=2)
+    parser.add_argument('--logger_save_dir', default='D:/tmp/logs/december/')
+    parser.add_argument('--save_top_k', default=1, type=int)
+    parser.add_argument('--experiment_name', default='vnet_tuning_' + dt_str)
+    parser.add_argument('--date_time', default=dt_str)
     parser.add_argument('--checkpoint_path', default=None)
+
+    parser = vnet.VNet.add_model_specific_args(parser)
+    parser = Trainer.add_argparse_args(parser)
+
+    # Override pytorch_lightning defaults
+    parser.set_defaults(max_epochs=5000, gpus=1)
+
+    parser = cli.add_argument_tracking(parser)
+
     hparams = parser.parse_args()
 
     main(hparams)

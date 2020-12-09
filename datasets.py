@@ -135,9 +135,23 @@ class RandomSupportedSubvolsDataset(SubvolsDataset):
         # For now, just keep sampling random subvolumes until we find one with
         # labels. Since F.random_crop is fast, this is okay.
         while True:
-            sample = F.random_crop(data_and_mask, self.size, self.dist)
+            sample, corner = F.random_crop(data_and_mask, self.size, self.dist,
+                                           return_corner=True)
             if torch.any(sample[1] > 0):
-                return sample
+                corner = self._move_to_center_of_mass(corner, sample[1],
+                                                      data_and_mask[1].size())
+                return F.crop(data_and_mask, corner, self.size)
+
+
+    def _move_to_center_of_mass(self, corner, labels, vol_size):
+        x, y, z = torch.nonzero(labels > 0, as_tuple=True)[-3:]
+        x = torch.round(x.float().mean() - self.size[0] / 2) + corner[0]
+        y = torch.round(y.float().mean() - self.size[1] / 2) + corner[1]
+        z = torch.round(z.float().mean() - self.size[2] / 2) + corner[2]
+        x = min(max(x, 0), vol_size[-3] - self.size[0])
+        y = min(max(y, 0), vol_size[-2] - self.size[1])
+        z = min(max(z, 0), vol_size[-1] - self.size[2])
+        return torch.tensor([x, y, z]).long()
 
 
     def __len__(self):

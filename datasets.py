@@ -32,16 +32,12 @@ class SubvolsDataset(Dataset):
         self.pre_load = pre_load
         if self.pre_load:
             # Load all volumes
-            self.volumes = [torch.stack(self.load_volume(i))
+            self.volumes = [self.load_volume(i)
                             for i in range(self.num_volumes)]
 
 
-    def get_crop(self, mask_and_data, index):
-        return self.get_crop_fn(mask_and_data, index)
-
-
     def get_sample(self, index):
-        data_and_mask = self.get_crop(index)
+        data_and_mask = self.get_crop_fn(index)
         return {'data': data_and_mask[0], 'label': data_and_mask[1] }
 
 
@@ -96,7 +92,7 @@ class SubvolsDataset(Dataset):
         mask = mask[np.newaxis, ...]
         mask = torch.from_numpy(mask)
 
-        return data, mask
+        return torch.stack((data, mask))
 
 
 class RandomSubvolsDataset(SubvolsDataset):

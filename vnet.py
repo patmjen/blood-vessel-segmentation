@@ -263,7 +263,7 @@ class VNet(pl.LightningModule):
         # batch_transforms = Compose(batch_transforms)
 
         return DataLoader(self.val_dataset,
-                          batch_size=1,
+                          batch_size=2 * self.hparams.batch_size,
                           num_workers=self.hparams.num_loader_workers,
                           shuffle=False,
                           # batch_transforms=batch_transforms,

@@ -33,13 +33,18 @@ source init.sh
 
 nvidia-smi
 
+git log -1 --no-color
+git diff -U1
+
 python run_training.py \
-    --experiment_name=vnet_train_sparse_3_lr=1e-3 \
+    --experiment_name=vnet_train_${LSB_JOBID} \
     --lr=1e-3 \
     --max_epochs=10000 \
     --num_loader_workers=0 \
     --logger_save_dir=/work1/patmjen/logs/december/ \
     --data_dir=/work1/patmjen/data/sparse/ \
-    --samples_per_volume=128 \
-    --batch_size=2 \
-    --progress_bar_refresh_rate=0
+    --samples_per_volume=256 \
+    --batch_size=6 \
+    --progress_bar_refresh_rate=0 \
+    --crop_size=96
+

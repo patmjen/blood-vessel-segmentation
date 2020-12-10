@@ -34,7 +34,7 @@ source init.sh
 nvidia-smi
 
 git log -1 --no-color
-git diff -U1
+git diff -U1 --no-pager
 
 python run_training.py \
     --experiment_name=vnet_train_${LSB_JOBID} \

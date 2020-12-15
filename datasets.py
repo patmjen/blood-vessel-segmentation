@@ -169,15 +169,18 @@ class SubvolCorners:
     Compute corner positions for moving over a volume with subvolumes of a
     given size and step.
     """
-    def __init__(self, vol_size, size, step=None):
+    def __init__(self, vol_size, size, step=None, border=None):
         """
         Args:
             vol_size: size of volume.
             size: size of subvolume.
             step: step length. Default is step=size.
+            border: crops an extra part around each subvol, e.g. to get over-
+                    lapping subvols. Default is no border.
         """
         self.vol_size = np.asarray(vol_size)
         self.size = np.asarray(size)
+        self.border = np.asarray(border)
         if step is None:
             self.step = self.size
         else:
@@ -196,14 +199,26 @@ class SubvolCorners:
             index: subvolume index.
 
         Returns:
-            np.array: corner position
+            - If border is none:
+              np.array: corner position
+            - If border is not none
+              np.array: outer corner position (including border)
+              np.array: crop size including border
+              np.array: inner corner position in cropped subvol
         """
         corner = np.unravel_index(index, self.samples_per_dim)
         corner = np.array(corner) * self.step
         # If a subvolume would exit the volume we move the corner back. This
         # means overlap may increase. The alternative would be padding.
         corner = np.minimum(self.vol_size - self.size, corner)
-        return corner
+        if self.border is None:
+            return corner
+        else:
+            outer_corner = np.maximum(0, corner - self.border)
+            outer_size = np.minimum(self.vol_size - outer_corner,
+                                    self.size + 2 * self.border)
+            inner_corner = corner - outer_corner
+            return outer_corner, outer_size, inner_corner
 
 
     def __iter__(self):

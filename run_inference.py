@@ -21,7 +21,6 @@ def main(args):
     model = vnet.VNet.load_from_checkpoint(args.checkpoint)
 
     size = np.asarray(args.crop_size)
-    step = size
 
     files = []
     for f in listdir(args.data_dir):
@@ -46,16 +45,18 @@ def main(args):
         pred = torch.zeros((2,) + vol_size, dtype=torch.float32)
         mask = torch.zeros((1,) + vol_size, dtype=torch.bool)
 
-        for c in tqdm(SubvolCorners(vol_size, size, step)):
-            sub_data = F.crop(data, c, size)
-            sub_pred = F.crop(pred, c, size)
-            sub_mask = F.crop(mask, c, size)
+        for outer_corner, outer_size, inner_corner in tqdm(SubvolCorners(
+            vol_size, size, border=32)):
+            sub_data = F.crop(data, outer_corner, outer_size)
+            sub_pred = F.crop(pred, outer_corner + inner_corner, size)
+            sub_mask = F.crop(mask, outer_corner + inner_corner, size)
 
             if torch.cuda.is_available():
                 sub_data = sub_data.cuda()
 
             with torch.no_grad():
-                sub_pred[:] = model(sub_data).cpu()
+                res = model(sub_data).cpu()
+                sub_pred[:] = F.crop(res, inner_corner, size)
             sub_mask[:] = sub_pred.argmax(dim=0) == 1
 
         pred = pred.squeeze()

@@ -1,4 +1,5 @@
 import os
+from os.path import join
 from argparse import ArgumentParser
 import datetime
 
@@ -13,7 +14,7 @@ import cli
 def main(hparams):
     today = datetime.datetime.now().strftime('%d.%m.%Y')
     checkpoint_callback = ModelCheckpoint(
-        dirpath=hparams.logger_save_dir+hparams.experiment_name+'/ckpts/',
+        dirpath=join(hparams.logger_save_dir, hparams.experiment_name, 'ckpts'),
         filename='ckpt-' + today + '-{epoch:02d}-{val_loss:2f}',
         save_top_k=hparams.save_top_k,
         verbose=True,

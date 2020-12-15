@@ -23,7 +23,6 @@ def main(hparams):
 
     tb_logger = loggers.TensorBoardLogger(save_dir=hparams.logger_save_dir,
                                           name=hparams.experiment_name)
-    logger_list = [tb_logger]
     if hparams.checkpoint_path is None:
         model = vnet.VNet(**vars(hparams))
     else:
@@ -35,7 +34,7 @@ def main(hparams):
     trainer = Trainer.from_argparse_args(
         hparams,
         callbacks=[checkpoint_callback],
-        logger=logger_list)
+        logger=tb_logger)
 
     trainer.fit(model)
 

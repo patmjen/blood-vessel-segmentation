@@ -207,8 +207,26 @@ class VNet(pl.LightningModule):
 
         res = 0.5 * (loss(pred_0, y, 2) + loss(pred_1, y, 1))
 
+        # Log prediction images
+        data_slice = x[:, :, :, :, x.shape[-1] // 2]
+        pred_slice = pred_1[:, :, :, :, x.shape[-1] // 2].squeeze(dim=1)
+        log_im = data_slice.repeat([1, 3, 1, 1])
+        log_im[:, 0, :, :] += 0.5 * pred_slice
+        log_im = log_im.clamp(0, 1)
+
         self.log('val_loss', res, prog_bar=True, logger=True)
-        return res
+        return res, log_im
+
+    def validation_epoch_end(self, val_step_outputs):
+        # Split results in separate lists
+        # https://stackoverflow.com/a/19343/1814397
+        val_step_outputs = list(zip(*val_step_outputs))
+        self.log('val_loss', torch.stack(val_step_outputs[0]).mean(),
+                 prog_bar=True, logger=True)
+        log_im = torch.cat(val_step_outputs[1])
+        self.logger.experiment.add_images(f'Predictions', log_im,
+                                          global_step=self.global_step)
+
 
     def prepare_data(self):
         print("Preparing data ...")

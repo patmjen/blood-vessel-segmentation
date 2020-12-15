@@ -180,7 +180,11 @@ class SubvolCorners:
         """
         self.vol_size = np.asarray(vol_size)
         self.size = np.asarray(size)
-        self.border = np.asarray(border)
+        if border is None:
+            self.border = border
+        else:
+            self.border = np.asarray(border)
+
         if step is None:
             self.step = self.size
         else:

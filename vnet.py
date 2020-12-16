@@ -37,7 +37,8 @@ def get_num_groups(num_chans):
 class ConvStep(nn.Module):
     def __init__(self, num_chans, dropout, do_rate):
         super(ConvStep, self).__init__()
-        self.conv_1 = nn.Conv3d(num_chans, num_chans, kernel_size=5, padding=2)
+        self.conv_1 = nn.Conv3d(num_chans, num_chans, kernel_size=5, padding=2,
+                                bias=False)
         self.batch_norm_1 = nn.BatchNorm3d(num_chans)
         self.prelu_1 = nn.PReLU(num_chans)
         self.do_1 = passthrough
@@ -59,7 +60,8 @@ def make_nConvs(num_chans, num_convs, dropout, do_rate):
 class InputTransition(nn.Module):
     def __init__(self, out_cha):
         super(InputTransition, self).__init__()
-        self.conv_1 = nn.Conv3d(1, out_cha, kernel_size=5, padding=2)
+        self.conv_1 = nn.Conv3d(1, out_cha, kernel_size=5, padding=2,
+                                bias=False)
         self.batch_norm_1 = nn.BatchNorm3d(out_cha)
         self.prelu_1 = nn.PReLU(out_cha)
 
@@ -77,7 +79,8 @@ class DownTransition(nn.Module):
     def __init__(self, in_chans, nConvs, dropout=False, do_rate=0.5):
         super(DownTransition, self).__init__()
         out_chans = 2*in_chans
-        self.down_conv = nn.Conv3d(in_chans, out_chans, kernel_size=2, stride=2)
+        self.down_conv = nn.Conv3d(in_chans, out_chans, kernel_size=2,
+                                   stride=2, bias=False)
         self.batch_norm_1 = nn.BatchNorm3d(out_chans)
         self.prelu_1 = nn.PReLU(out_chans)
         self.do_1 = passthrough
@@ -100,7 +103,7 @@ class UpTransition(nn.Module):
         out_chans_half = out_chans // 2
         # out_chans_half = out_chans
         self.up_conv = nn.ConvTranspose3d(
-            in_chans, out_chans_half, kernel_size=2, stride=2)
+            in_chans, out_chans_half, kernel_size=2, stride=2, bias=False)
         self.batch_norm_1 = nn.BatchNorm3d(out_chans_half)
         self.prelu_1 = nn.PReLU(out_chans_half)
         self.do_1 = passthrough
@@ -120,7 +123,7 @@ class UpTransition(nn.Module):
 class OutputTransition(nn.Module):
     def __init__(self, in_chans):
         super(OutputTransition, self).__init__()
-        self.conv_1 = nn.Conv3d(in_chans, 2, kernel_size=1)
+        self.conv_1 = nn.Conv3d(in_chans, 2, kernel_size=1, bias=False)
         self.bn_1 = nn.BatchNorm3d(2)
         self.prelu_1 = nn.PReLU(2)
         # Input should be N x C x D x H x W and we want max over C dimension.

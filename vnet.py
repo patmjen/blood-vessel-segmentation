@@ -60,6 +60,7 @@ def make_nConvs(num_chans, num_convs, dropout, do_rate):
 class InputTransition(nn.Module):
     def __init__(self, out_cha):
         super(InputTransition, self).__init__()
+        self.out_channels = out_cha
         self.conv_1 = nn.Conv3d(1, out_cha, kernel_size=5, padding=2,
                                 bias=False)
         self.batch_norm_1 = nn.BatchNorm3d(out_cha)
@@ -67,10 +68,8 @@ class InputTransition(nn.Module):
 
     def forward(self, x):
         out = self.prelu_1(self.batch_norm_1(self.conv_1(x)))
-        # Right cat dimension?
-        x16 = torch.cat((x, x, x, x, x, x, x, x,
-                         x, x, x, x, x, x, x, x), 1)
-        out = torch.add(out, x16)
+        repx = x.expand(-1, self.out_channels, -1, -1, -1)
+        out = torch.add(out, repx)
 
         return out
 

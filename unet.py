@@ -18,12 +18,26 @@ from elasdeform3d.rising import ElasticDeformer3d
 
 class ConvStep(nn.Sequential):
     def __init__(self, in_channels, out_channels):
-        super().__init__(
-            nn.Conv3d(in_channels, out_channels, kernel_size=3, padding=1,
-                      bias=False),
-            nn.BatchNorm3d(out_channels),
-            nn.ReLU()
-        )
+        super().__init__()
+        self.add_module('Conv', nn.Conv3d(in_channels, out_channels,
+                                          kernel_size=3, padding=1, 
+                                          bias=False))
+        self.add_module('BatchNorm', nn.BatchNorm3d(out_channels))
+        self.add_module('ReLU', nn.ReLU())
+
+
+class InputBlock(nn.Sequential):
+    def __init__(self, in_channels, base_channels, out_channels=None, 
+                 n_conv=1):
+        super().__init__()
+        if out_channels is None:
+            out_channels = 2 * base_channels
+        self.add_module('ConvStep0', ConvStep(in_channels, base_channels))
+        for i in range(n_conv - 1):
+            self.add_module(f'ConvStep{i + 1}',
+                            ConvStep(base_channels, base_channels))
+        self.add_module(f'ConvStep{n_conv}',
+                        ConvStep(base_channels, out_channels))
 
 
 class EncodeBlock(nn.Sequential):
@@ -32,17 +46,18 @@ class EncodeBlock(nn.Sequential):
         assert(n_conv >= 1)
         if out_channels is None:
             out_channels = 2 * in_channels
+        self.add_module('MaxPool', nn.MaxPool3d(2))
         for i in range(n_conv - 1):
-            self.add_module(f'ConvStep{i}', ConvStep(in_channels, in_channels))
+            self.add_module(f'ConvStep{i}',
+                            ConvStep(in_channels, in_channels))
 
         self.add_module(f'ConvStep{n_conv}',
                         ConvStep(in_channels, out_channels))
-        self.add_module('MaxPool', nn.MaxPool3d(2))
 
 
 class Upsampler(nn.Module):
     def __init__(self, interp_mode='nearest'):
-        super.__init__()
+        super().__init__()
         self.interp_mode = interp_mode
 
 
@@ -56,7 +71,7 @@ class DecodeBlock(nn.Module):
         super().__init__()
         assert(n_conv >= 1)
         if out_channels is None:
-            out_channels = in_channels / 2
+            out_channels = in_channels // 2
         if skip_channels is None:
             skip_channels = out_channels
         self.upsampler = Upsampler(interp_mode)
@@ -69,21 +84,22 @@ class DecodeBlock(nn.Module):
 
 
     def forward(self, x, skip_x):
-        up_x = self.upsampler(x)
-        catx = torch.cat(up_x, skip_x, dim=1)
+        up_x = self.upsampler(x, skip_x)
+        catx = torch.cat([up_x, skip_x], dim=1)
         return self.conv_steps(catx)
 
 
 class UNet3d(nn.Module):
     def __init__(self, in_channels, out_channels, base_channels=32,
                  num_levels=4):
-        super.__init__()
-        self.input_conv = ConvStep(in_channels, base_channels)
-        self.encoders = [EncodeBlock(base_channels, n_conv=1)]
+        super().__init__()
+        self.input_conv = InputBlock(in_channels, base_channels)
+        self.encoders = nn.ModuleList()
         for i in range(1, num_levels):
             self.encoders.append(EncodeBlock(base_channels * (2 ** i)))
-        self.decoders = [DecodeBlock(base_channels * (2 ** (i + 1)))
-                         for i in reversed(range(1, num_levels))]
+        self.decoders = nn.ModuleList()
+        for i in reversed(range(1, num_levels)):
+            self.decoders.append(DecodeBlock(base_channels * (2 ** (i + 1))))
         self.output_conv = nn.Conv3d(2 * base_channels, out_channels,
                                      kernel_size=1)
         self.init_weights()
@@ -101,7 +117,7 @@ class UNet3d(nn.Module):
 
     def forward(self, x):
         x_crnt = self.input_conv(x)
-        skips = []
+        skips = [x_crnt]
         for enc in self.encoders:
             x_crnt = enc(x_crnt)
             skips.append(x_crnt)
@@ -109,7 +125,7 @@ class UNet3d(nn.Module):
         for dec in self.decoders:
             x_skip = skips.pop()
             x_crnt = dec(x_crnt, x_skip)
-        return self.output_conv(x_crnt)
+        return F.softmax(self.output_conv(x_crnt), dim=1)
 
 
 class UNet3dTrainer(pl.LightningModule):

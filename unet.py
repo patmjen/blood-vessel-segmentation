@@ -158,7 +158,7 @@ class UNet3dTrainer(pl.LightningModule):
         parser.add_argument('--min_lr', default=5e-5, type=float)
         parser.add_argument('--lr_reduce_factor', default=0.8, type=float)
         parser.add_argument('--normalization', default='b', choices=['b', 'g'])
-        parser.set_defaults(model=cls)
+        parser.set_defaults(Model=cls)
         return parser
 
 
@@ -169,7 +169,7 @@ class UNet3dTrainer(pl.LightningModule):
             hparams['crop_size'] = (hparams['crop_size'],) * 3
 
         self.save_hyperparameters(hparams)
-        self.model = UNet3d(1, 2, norm=hparams.normalization)
+        self.model = UNet3d(1, 2, norm=hparams['normalization'])
 
 
     def forward(self, x):

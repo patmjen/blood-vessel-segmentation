@@ -120,9 +120,10 @@ class UpTransition(nn.Module):
         self.up_conv = nn.ConvTranspose3d(
             in_chans, out_chans_half, kernel_size=2, stride=2, bias=False)
         if norm == 'b':
-            self.norm_1 = nn.BatchNorm3d(out_chans)
+            self.norm_1 = nn.BatchNorm3d(out_chans_half)
         elif norm == 'g':
-            self.norm_1 = nn.GroupNorm(get_num_groups(out_chans), out_chans)
+            self.norm_1 = nn.GroupNorm(get_num_groups(out_chans_half),
+                                       out_chans_half)
         else:
             self.norm_1 = passthrough
         self.prelu_1 = nn.PReLU(out_chans_half)
@@ -186,16 +187,16 @@ class VNet(pl.LightningModule):
 
         self.save_hyperparameters(hparams)
 
-        self.in_tr = InputTransition(16, norm=hparams.normalization)
-        self.down_tr32 = DownTransition(16, 2, norm=hparams.normalization)
-        self.down_tr64 = DownTransition(32, 3, norm=hparams.normalization)
-        self.down_tr128 = DownTransition(64, 3, norm=hparams.normalization)
-        self.down_tr256 = DownTransition(128, 3, norm=hparams.normalization)
-        self.up_tr256 = UpTransition(256, 256, 3, norm=hparams.normalization)
-        self.up_tr128 = UpTransition(256, 128, 2, norm=hparams.normalization)
-        self.up_tr64 = UpTransition(128, 64, 2, norm=hparams.normalization)
-        self.up_tr32 = UpTransition(64, 32, 2, norm=hparams.normalization)
-        self.out_tr = OutputTransition(32, norm=hparams.normalization)
+        self.in_tr = InputTransition(16, norm=hparams['normalization'])
+        self.down_tr32 = DownTransition(16, 2, norm=hparams['normalization'])
+        self.down_tr64 = DownTransition(32, 3, norm=hparams['normalization'])
+        self.down_tr128 = DownTransition(64, 3, norm=hparams['normalization'])
+        self.down_tr256 = DownTransition(128, 3, norm=hparams['normalization'])
+        self.up_tr256 = UpTransition(256, 256, 3, norm=hparams['normalization'])
+        self.up_tr128 = UpTransition(256, 128, 2, norm=hparams['normalization'])
+        self.up_tr64 = UpTransition(128, 64, 2, norm=hparams['normalization'])
+        self.up_tr32 = UpTransition(64, 32, 2, norm=hparams['normalization'])
+        self.out_tr = OutputTransition(32, norm=hparams['normalization'])
 
         # initialise weights
         for m in self.modules():

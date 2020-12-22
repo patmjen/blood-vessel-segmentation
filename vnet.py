@@ -35,39 +35,49 @@ def get_num_groups(num_chans):
 
 
 class ConvStep(nn.Module):
-    def __init__(self, num_chans, dropout, do_rate):
+    def __init__(self, num_chans, dropout, do_rate, norm):
         super(ConvStep, self).__init__()
         self.conv_1 = nn.Conv3d(num_chans, num_chans, kernel_size=5, padding=2,
                                 bias=False)
-        self.batch_norm_1 = nn.BatchNorm3d(num_chans)
+        if norm == 'b':
+            self.norm_1 = nn.BatchNorm3d(num_chans)
+        elif norm == 'g':
+            self.norm_1 = nn.GroupNorm(get_num_groups(num_chans), num_chans)
+        else:
+            self.norm_1 = passthrough
         self.prelu_1 = nn.PReLU(num_chans)
         self.do_1 = passthrough
         if dropout:
             self.do_1 = nn.Dropout3d(p=do_rate)
 
     def forward(self, x):
-        out = self.do_1(self.prelu_1(self.batch_norm_1(self.conv_1(x))))
+        out = self.do_1(self.prelu_1(self.norm_1(self.conv_1(x))))
         return out
 
 
-def make_nConvs(num_chans, num_convs, dropout, do_rate):
+def make_nConvs(num_chans, num_convs, dropout, do_rate, norm):
     layers = []
     for _ in range(num_convs):
-        layers.append(ConvStep(num_chans, dropout, do_rate))
+        layers.append(ConvStep(num_chans, dropout, do_rate, norm))
     return nn.Sequential(*layers)
 
 
 class InputTransition(nn.Module):
-    def __init__(self, out_cha):
+    def __init__(self, out_cha, norm='b'):
         super(InputTransition, self).__init__()
         self.out_channels = out_cha
         self.conv_1 = nn.Conv3d(1, out_cha, kernel_size=5, padding=2,
                                 bias=False)
-        self.batch_norm_1 = nn.BatchNorm3d(out_cha)
+        if norm == 'b':
+            self.norm_1 = nn.BatchNorm3d(out_cha)
+        elif norm == 'g':
+            self.norm_1 = nn.GroupNorm(get_num_groups(out_cha), out_cha)
+        else:
+            self.norm_1 = passthrough
         self.prelu_1 = nn.PReLU(out_cha)
 
     def forward(self, x):
-        out = self.prelu_1(self.batch_norm_1(self.conv_1(x)))
+        out = self.prelu_1(self.norm_1(self.conv_1(x)))
         repx = x.expand(-1, self.out_channels, -1, -1, -1)
         out = torch.add(out, repx)
 
@@ -75,27 +85,33 @@ class InputTransition(nn.Module):
 
 
 class DownTransition(nn.Module):
-    def __init__(self, in_chans, nConvs, dropout=False, do_rate=0.5):
+    def __init__(self, in_chans, nConvs, dropout=False, do_rate=0.5, norm='b'):
         super(DownTransition, self).__init__()
         out_chans = 2*in_chans
         self.down_conv = nn.Conv3d(in_chans, out_chans, kernel_size=2,
                                    stride=2, bias=False)
-        self.batch_norm_1 = nn.BatchNorm3d(out_chans)
+        if norm == 'b':
+            self.norm_1 = nn.BatchNorm3d(out_chans)
+        elif norm == 'g':
+            self.norm_1 = nn.GroupNorm(get_num_groups(out_chans), out_chans)
+        else:
+            self.norm_1 = passthrough
         self.prelu_1 = nn.PReLU(out_chans)
         self.do_1 = passthrough
         if dropout:
             self.do_1 = nn.Dropout3d(p=do_rate)
-        self.n_convs = make_nConvs(out_chans, nConvs, dropout, do_rate)
+        self.n_convs = make_nConvs(out_chans, nConvs, dropout, do_rate, norm)
 
     def forward(self, x):
-        down = self.do_1(self.prelu_1(self.batch_norm_1(self.down_conv(x))))
+        down = self.do_1(self.prelu_1(self.norm_1(self.down_conv(x))))
         out = self.n_convs(down)
         out = torch.add(out, down)
         return out
 
 
 class UpTransition(nn.Module):
-    def __init__(self, in_chans, out_chans, nConvs, dropout=False, do_rate=0.5):
+    def __init__(self, in_chans, out_chans, nConvs, dropout=False, do_rate=0.5,
+                 norm='b'):
         super(UpTransition, self).__init__()
         # Should the input to the nConvs have 256 or 384 channels?
         # This also affects the recurrent connection leading to the end of the nConvs
@@ -103,15 +119,20 @@ class UpTransition(nn.Module):
         # out_chans_half = out_chans
         self.up_conv = nn.ConvTranspose3d(
             in_chans, out_chans_half, kernel_size=2, stride=2, bias=False)
-        self.batch_norm_1 = nn.BatchNorm3d(out_chans_half)
+        if norm == 'b':
+            self.norm_1 = nn.BatchNorm3d(out_chans)
+        elif norm == 'g':
+            self.norm_1 = nn.GroupNorm(get_num_groups(out_chans), out_chans)
+        else:
+            self.norm_1 = passthrough
         self.prelu_1 = nn.PReLU(out_chans_half)
         self.do_1 = passthrough
         if dropout:
             self.do_1 = nn.Dropout3d(p=do_rate)
-        self.n_convs = make_nConvs(out_chans, nConvs, dropout, do_rate)
+        self.n_convs = make_nConvs(out_chans, nConvs, dropout, do_rate, norm)
 
     def forward(self, x, skipx):
-        out_upConv = self.do_1(self.prelu_1(self.batch_norm_1(self.up_conv(x))))
+        out_upConv = self.do_1(self.prelu_1(self.norm_1(self.up_conv(x))))
         # Correct cat dimension?
         xcat = torch.cat((out_upConv, skipx), 1)
         out = self.n_convs(xcat)
@@ -120,16 +141,21 @@ class UpTransition(nn.Module):
 
 
 class OutputTransition(nn.Module):
-    def __init__(self, in_chans):
+    def __init__(self, in_chans, norm='b'):
         super(OutputTransition, self).__init__()
         self.conv_1 = nn.Conv3d(in_chans, 2, kernel_size=1, bias=False)
-        self.bn_1 = nn.BatchNorm3d(2)
+        if norm == 'b':
+            self.norm_1 = nn.BatchNorm3d(2)
+        elif norm == 'g':
+            self.norm_1 = nn.GroupNorm(get_num_groups(2), 2)
+        else:
+            self.norm_1 = passthrough
         self.prelu_1 = nn.PReLU(2)
         # Input should be N x C x D x H x W and we want max over C dimension.
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
-        return self.softmax(self.prelu_1(self.bn_1(self.conv_1(x))))
+        return self.softmax(self.prelu_1(self.norm_1(self.conv_1(x))))
 
 
 class VNet(pl.LightningModule):
@@ -148,6 +174,7 @@ class VNet(pl.LightningModule):
         parser.add_argument('--data_dir', default=join(cwd, 'data', 'sparse'))
         parser.add_argument('--min_lr', default=5e-5, type=float)
         parser.add_argument('--lr_reduce_factor', default=0.8, type=float)
+        parser.add_argument('--normalization', default='b', choices=['b', 'g'])
         parser.set_defaults(Model=cls)
         return parser
 
@@ -159,16 +186,16 @@ class VNet(pl.LightningModule):
 
         self.save_hyperparameters(hparams)
 
-        self.in_tr = InputTransition(16)
-        self.down_tr32 = DownTransition(16, 2)
-        self.down_tr64 = DownTransition(32, 3)
-        self.down_tr128 = DownTransition(64, 3)
-        self.down_tr256 = DownTransition(128, 3)
-        self.up_tr256 = UpTransition(256, 256, 3)
-        self.up_tr128 = UpTransition(256, 128, 2)
-        self.up_tr64 = UpTransition(128, 64, 2)
-        self.up_tr32 = UpTransition(64, 32, 2)
-        self.out_tr = OutputTransition(32)
+        self.in_tr = InputTransition(16, norm=hparams.normalization)
+        self.down_tr32 = DownTransition(16, 2, norm=hparams.normalization)
+        self.down_tr64 = DownTransition(32, 3, norm=hparams.normalization)
+        self.down_tr128 = DownTransition(64, 3, norm=hparams.normalization)
+        self.down_tr256 = DownTransition(128, 3, norm=hparams.normalization)
+        self.up_tr256 = UpTransition(256, 256, 3, norm=hparams.normalization)
+        self.up_tr128 = UpTransition(256, 128, 2, norm=hparams.normalization)
+        self.up_tr64 = UpTransition(128, 64, 2, norm=hparams.normalization)
+        self.up_tr32 = UpTransition(64, 32, 2, norm=hparams.normalization)
+        self.out_tr = OutputTransition(32, norm=hparams.normalization)
 
         # initialise weights
         for m in self.modules():

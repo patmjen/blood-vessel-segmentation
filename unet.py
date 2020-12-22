@@ -16,32 +16,41 @@ from init_weights import init_weights
 from elasdeform3d.rising import ElasticDeformer3d
 
 
+def get_num_groups(num_chans):
+    return max(num_chans, num_chans // 32)
+
+
 class ConvStep(nn.Sequential):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, norm='b'):
         super().__init__()
         self.add_module('Conv', nn.Conv3d(in_channels, out_channels,
                                           kernel_size=3, padding=1,
                                           bias=False))
-        self.add_module('BatchNorm', nn.BatchNorm3d(out_channels))
+        if norm == 'b':
+            self.add_module('BatchNorm', nn.BatchNorm3d(out_channels))
+        elif norm == 'g':
+            self.add_module('GroupNorm', nn.GroupNorm(
+                get_num_groups(out_channels), out_channels))
         self.add_module('ReLU', nn.ReLU())
 
 
 class InputBlock(nn.Sequential):
     def __init__(self, in_channels, base_channels, out_channels=None,
-                 n_conv=1):
+                 n_conv=1, norm='b'):
         super().__init__()
         if out_channels is None:
             out_channels = 2 * base_channels
-        self.add_module('ConvStep0', ConvStep(in_channels, base_channels))
+        self.add_module('ConvStep0', ConvStep(in_channels, base_channels,
+                                              norm=norm))
         for i in range(n_conv - 1):
             self.add_module(f'ConvStep{i + 1}',
-                            ConvStep(base_channels, base_channels))
+                            ConvStep(base_channels, base_channels, norm=norm))
         self.add_module(f'ConvStep{n_conv}',
-                        ConvStep(base_channels, out_channels))
+                        ConvStep(base_channels, out_channels, norm=norm))
 
 
 class EncodeBlock(nn.Sequential):
-    def __init__(self, in_channels, out_channels=None, n_conv=2):
+    def __init__(self, in_channels, out_channels=None, n_conv=2, norm='b'):
         super().__init__()
         assert(n_conv >= 1)
         if out_channels is None:
@@ -49,10 +58,10 @@ class EncodeBlock(nn.Sequential):
         self.add_module('MaxPool', nn.MaxPool3d(2))
         for i in range(n_conv - 1):
             self.add_module(f'ConvStep{i}',
-                            ConvStep(in_channels, in_channels))
+                            ConvStep(in_channels, in_channels, norm=norm))
 
         self.add_module(f'ConvStep{n_conv}',
-                        ConvStep(in_channels, out_channels))
+                        ConvStep(in_channels, out_channels, norm=norm))
 
 
 class Upsampler(nn.Module):
@@ -67,7 +76,7 @@ class Upsampler(nn.Module):
 
 class DecodeBlock(nn.Module):
     def __init__(self, in_channels, out_channels=None, skip_channels=None,
-                 n_conv=2, interp_mode='nearest'):
+                 n_conv=2, interp_mode='nearest', norm='b'):
         super().__init__()
         assert(n_conv >= 1)
         if out_channels is None:
@@ -77,10 +86,12 @@ class DecodeBlock(nn.Module):
         self.upsampler = Upsampler(interp_mode)
         self.conv_steps = nn.Sequential()
         self.conv_steps.add_module(
-            'ConvStep0', ConvStep(in_channels + skip_channels, out_channels))
+            'ConvStep0', ConvStep(in_channels + skip_channels, out_channels,
+                                  norm=norm))
         for i in range(n_conv - 1):
             self.conv_steps.add_module(f'ConvStep{i + 1}',
-                                       ConvStep(out_channels, out_channels))
+                                       ConvStep(out_channels, out_channels,
+                                                norm=norm))
 
 
     def forward(self, x, skip_x):
@@ -91,15 +102,17 @@ class DecodeBlock(nn.Module):
 
 class UNet3d(nn.Module):
     def __init__(self, in_channels, out_channels, base_channels=32,
-                 num_levels=4):
+                 num_levels=4, norm='b'):
         super().__init__()
-        self.input_conv = InputBlock(in_channels, base_channels)
+        self.input_conv = InputBlock(in_channels, base_channels, norm=norm)
         self.encoders = nn.ModuleList()
         for i in range(1, num_levels):
-            self.encoders.append(EncodeBlock(base_channels * (2 ** i)))
+            self.encoders.append(EncodeBlock(base_channels * (2 ** i),
+                                             norm=norm))
         self.decoders = nn.ModuleList()
         for i in reversed(range(1, num_levels)):
-            self.decoders.append(DecodeBlock(base_channels * (2 ** (i + 1))))
+            self.decoders.append(DecodeBlock(base_channels * (2 ** (i + 1)),
+                                             norm=norm))
         self.output_conv = nn.Conv3d(2 * base_channels, out_channels,
                                      kernel_size=1)
         self.init_weights()
@@ -144,6 +157,7 @@ class UNet3dTrainer(pl.LightningModule):
         parser.add_argument('--data_dir', default=join(cwd, 'data', 'sparse'))
         parser.add_argument('--min_lr', default=5e-5, type=float)
         parser.add_argument('--lr_reduce_factor', default=0.8, type=float)
+        parser.add_argument('--normalization', default='b', choices=['b', 'g'])
         parser.set_defaults(model=cls)
         return parser
 
@@ -155,7 +169,7 @@ class UNet3dTrainer(pl.LightningModule):
             hparams['crop_size'] = (hparams['crop_size'],) * 3
 
         self.save_hyperparameters(hparams)
-        self.model = UNet3d(1, 2)
+        self.model = UNet3d(1, 2, norm=hparams.normalization)
 
 
     def forward(self, x):

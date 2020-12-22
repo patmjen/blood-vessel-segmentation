@@ -9,6 +9,7 @@ from pytorch_lightning import loggers
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 import vnet
+import unet
 import cli
 
 def main(hparams):
@@ -24,12 +25,13 @@ def main(hparams):
     tb_logger = loggers.TensorBoardLogger(save_dir=hparams.logger_save_dir,
                                           name=hparams.experiment_name)
     if hparams.checkpoint_path is None:
-        model = vnet.VNet(**vars(hparams))
+        model = hparams.Model(**vars(hparams))
     else:
         # If any arguments were explicitly given, then force those
         seen_params = { a : getattr(hparams, a) for a in hparams.seen_args_ }
         checkpoint_path = seen_params.pop('checkpoint_path')
-        model = vnet.VNet.load_from_checkpoint(checkpoint_path, **seen_params)
+        model = hparams.Model.load_from_checkpoint(checkpoint_path,
+                                                   **seen_params)
 
     trainer = Trainer.from_argparse_args(
         hparams,
@@ -51,8 +53,14 @@ if __name__ == '__main__':
     parser.add_argument('--date_time', default=dt_str)
     parser.add_argument('--checkpoint_path', default=None)
 
-    parser = vnet.VNet.add_model_specific_args(parser)
     parser = Trainer.add_argparse_args(parser)
+
+    subparsers = parser.add_subparsers(required=True)
+
+    vnet_parser = vnet.VNet.add_model_specific_args(
+        subparsers.add_parser('vnet'))
+    unet_parser = unet.UNet3dTrainer.add_model_specific_args(
+        subparsers.add_parser('unet'))
 
     # Override pytorch_lightning defaults
     parser.set_defaults(max_epochs=5000, gpus=1)

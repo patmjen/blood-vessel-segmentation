@@ -133,16 +133,22 @@ class OutputTransition(nn.Module):
 
 
 class VNet(pl.LightningModule):
-    @staticmethod
-    def add_model_specific_args(parent_parser):
+    @classmethod
+    def add_model_specific_args(cls, parent_parser, inplace=True):
         cwd = os.getcwd()
-        parser = ArgumentParser(parents=[parent_parser], add_help=False)
+        if not inplace:
+            parser = ArgumentParser(parents=[parent_parser], add_help=False)
+        else:
+            parser = parent_parser
         parser.add_argument('--lr', default=1e-3, type=float)
         parser.add_argument('--num_loader_workers', default=0, type=int)
         parser.add_argument('--batch_size', default=1, type=int)
         parser.add_argument('--crop_size', default=128, type=int)
         parser.add_argument('--samples_per_volume', default=10, type=int)
         parser.add_argument('--data_dir', default=join(cwd, 'data', 'sparse'))
+        parser.add_argument('--min_lr', default=5e-5, type=float)
+        parser.add_argument('--lr_reduce_factor', default=0.8, type=float)
+        parser.set_defaults(Model=cls)
         return parser
 
     def __init__(self, **hparams):
@@ -293,7 +299,8 @@ class VNet(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, min_lr=1e-5, factor=0.8)
+            optimizer, min_lr=self.hparams.min_lr,
+            factor=self.hparams.lr_reduce_factor)
         return { 'optimizer': optimizer, 'lr_scheduler': scheduler,
                  'monitor': 'val_loss' }
 

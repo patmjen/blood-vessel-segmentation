@@ -37,14 +37,15 @@ git log -1 --no-color
 git --no-pager diff -U1
 
 python run_training.py \
+    unet \
     --experiment_name=vnet_train_${LSB_JOBID} \
     --lr=1e-3 \
     --max_epochs=10000 \
     --num_loader_workers=0 \
     --logger_save_dir=/work1/patmjen/logs/december/ \
-    --data_dir=/work1/patmjen/data/sparse/ \
+    --data_dir=/work1/patmjen/data/sparse3d/ \
     --samples_per_volume=256 \
-    --batch_size=6 \
+    --batch_size=2 \
     --progress_bar_refresh_rate=0 \
-    --crop_size=96
+    --crop_size=96 \
 

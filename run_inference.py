@@ -13,12 +13,16 @@ with warnings.catch_warnings():
     # Avoid warnings from tensorboard uing deprecated functions
     warnings.filterwarnings("ignore", category=DeprecationWarning)
     import vnet
+    import unet
 
 from datasets import SubvolCorners
 
 def main(args):
     print('Loading model')
-    model = vnet.VNet.load_from_checkpoint(args.checkpoint)
+    if args.model == 'vnet':
+        model = vnet.VNet.load_from_checkpoint(args.checkpoint)
+    else:  # args.model == 'unet'
+        model = unet.UNet3dTrainer.load_from_checkpoint(args.checkpoint)
 
     size = np.asarray(args.crop_size)
 
@@ -46,7 +50,7 @@ def main(args):
         mask = torch.zeros((1,) + vol_size, dtype=torch.bool)
 
         for outer_corner, outer_size, inner_corner in tqdm(SubvolCorners(
-            vol_size, size, border=32)):
+            vol_size, size, border=args.border)):
             sub_data = F.crop(data, outer_corner, outer_size)
             sub_pred = F.crop(pred, outer_corner + inner_corner, size)
             sub_mask = F.crop(mask, outer_corner + inner_corner, size)
@@ -80,7 +84,9 @@ if __name__ == '__main__':
     parser.add_argument('--save_dir', default=os.getcwd())
     parser.add_argument('--data_dir', default=os.getcwd())
     parser.add_argument('--crop_size', default=128, type=int)
-    parser.add_argument('--file_type', default='npy')
+    parser.add_argument('--file_type', default='npy', choices=['npy', 'raw'])
+    parser.add_argument('--model', default='vnet', choices=['vnet', 'unet'])
+    parser.add_argument('--border', default=32, type=int)
     args = parser.parse_args()
 
     args.crop_size = (args.crop_size,) * 3

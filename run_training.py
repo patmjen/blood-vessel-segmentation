@@ -28,9 +28,9 @@ def main(hparams):
         model = hparams.Model(**vars(hparams))
     else:
         # If any arguments were explicitly given, then force those
-        seen_params = { a : getattr(hparams, a) for a in hparams.seen_args_ }
-        checkpoint_path = seen_params.pop('checkpoint_path')
-        model = hparams.Model.load_from_checkpoint(checkpoint_path,
+        seen_params = { a : getattr(hparams, a) for a in hparams.seen_args_
+                        if a != '==SUPPRESS==' }
+        model = hparams.Model.load_from_checkpoint(hparams.checkpoint_path,
                                                    **seen_params)
 
     trainer = Trainer.from_argparse_args(
@@ -65,7 +65,9 @@ if __name__ == '__main__':
     # Override pytorch_lightning defaults
     parser.set_defaults(max_epochs=5000, gpus=1)
 
-    parser = cli.add_argument_tracking(parser)
+    cli.add_argument_tracking(vnet_parser)
+    cli.add_argument_tracking(unet_parser)
+    parser = cli.add_argument_tracking(parser, extra_name='seen_prog_args_')
 
     hparams = parser.parse_args()
 

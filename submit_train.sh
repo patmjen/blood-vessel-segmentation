@@ -13,7 +13,7 @@
 # specify system resources
 #BSUB -R "span[hosts=1]"
 #BSUB -R "rusage[mem=12GB]"
-##BSUB -R "select[gpu32gb]"
+#BSUB -R "select[gpu32gb]"
 ### -- set the email address --
 # please uncomment the following line and put in your e-mail address,
 # if you want to receive e-mail notifications on a non-default address
@@ -37,17 +37,18 @@ git log -1 --no-color
 git --no-pager diff -U1
 
 python run_training.py \
-    --experiment_name=vnet_train_${LSB_JOBID} \
-    --logger_save_dir=/work1/patmjen/logs/december/ \
+    --experiment_name=net_train_${LSB_JOBID} \
+    --logger_save_dir=/work1/patmjen/logs/ \
     --max_epochs=10000 \
     --progress_bar_refresh_rate=0 \
-    --fast_dev_run=True \
-    unet \
+    vnet \
     --lr=1e-3 \
     --num_loader_workers=0 \
-    --data_dir=/work1/patmjen/data/sparse3d/ \
+    --data_dir=/work1/patmjen/data/control_sparse/ \
     --samples_per_volume=256 \
-    --batch_size=2 \
+    --batch_size=12 \
     --crop_size=96 \
-    --normalization='g' \
+    --normalization='b' \
+    --min_lr=1e-3 \
+    --lr_reduce_factor=0.6 \
 

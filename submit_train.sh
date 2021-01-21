@@ -24,8 +24,8 @@
 ##BSUB -N
 ### -- Specify the output and error file. %J is the job-id --
 ### -- -o and -e mean append, -oo and -eo mean overwrite --
-#BSUB -o train_%J.out
-#BSUB -e train_%J.err
+#BSUB -o batch_output/train_%J.out
+#BSUB -e batch_output/train_%J.err
 # -- end of LSF options --
 
 # Load the cuda module
@@ -38,17 +38,17 @@ git --no-pager diff -U1
 
 python run_training.py \
     --experiment_name=net_train_${LSB_JOBID} \
-    --logger_save_dir=/work1/patmjen/logs/ \
+    --logger_save_dir=/work1/patmjen/HALOS/logs/ \
     --max_epochs=10000 \
     --progress_bar_refresh_rate=0 \
     vnet \
     --lr=1e-3 \
     --num_loader_workers=0 \
-    --data_dir=/work1/patmjen/data/control_sparse/ \
+    --data_dir=/work1/patmjen/HALOS/data/sparse3d/ \
     --samples_per_volume=256 \
     --batch_size=12 \
     --crop_size=96 \
     --normalization='b' \
     --min_lr=1e-3 \
-    --lr_reduce_factor=0.6 \
+    --lr_reduce_factor=0.8 \
 

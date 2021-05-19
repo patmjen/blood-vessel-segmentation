@@ -288,8 +288,8 @@ class VNet(pl.LightningModule):
         # transforms_augment.append(rtr.GaussianNoise(0., 0.05))
         transforms_augment.append(rtr.Rot90(dims=(0, 1, 2), keys=keys))
         transforms_augment.append(rtr.Mirror(dims=(0, 1, 2), keys=keys))
-        transforms_augment.append(ElasticDeformer3d(32, 4, keys=keys,
-            interp_mode={ 'data': 'linear', 'label': 'nearest' }))
+        #transforms_augment.append(ElasticDeformer3d(32, 4, keys=keys,
+        #    interp_mode={ 'data': 'linear', 'label': 'nearest' }))
         #transforms_augment.append(rtr.BaseAffine(
         #    scale=UniformParameter(0.95, 1.05),
         #    rotation=UniformParameter(-45, 45), degree=True,

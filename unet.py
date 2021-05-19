@@ -239,8 +239,8 @@ class UNet3dTrainer(pl.LightningModule):
         transforms_augment = []
         transforms_augment.append(rtr.Rot90(dims=(0, 1, 2), keys=keys))
         transforms_augment.append(rtr.Mirror(dims=(0, 1, 2), keys=keys))
-        transforms_augment.append(ElasticDeformer3d(32, 4, keys=keys,
-            interp_mode={ 'data': 'linear', 'label': 'nearest' }))
+        #transforms_augment.append(ElasticDeformer3d(32, 4, keys=keys,
+        #    interp_mode={ 'data': 'linear', 'label': 'nearest' }))
         gpu_transforms = Compose(transforms_augment)
         return DataLoader(self.train_dataset,
                           batch_size=self.hparams.batch_size,

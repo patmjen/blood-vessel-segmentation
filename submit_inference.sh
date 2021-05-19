@@ -12,7 +12,7 @@
 #BSUB -W 4:00
 # specify system resources
 #BSUB -R "span[hosts=1]"
-#BSUB -R "rusage[mem=32GB]"
+#BSUB -R "rusage[mem=24GB]"
 #BSUB -R "select[gpu32gb]"
 ### -- set the email address --
 # please uncomment the following line and put in your e-mail address,
@@ -36,7 +36,10 @@ nvidia-smi
 git log -1 --no-color
 git --no-pager diff -U1
 
-JOB_IDS="9093176"
+# JOB_IDS="9093176" # Best covid-19
+JOB_IDS="8904512" # Best control
+# JOB_IDS="9204292" # Best big covid-19
+# JOB_IDS="9325782" # Best corrected big covid-19
 
 LOG_DIR=/work1/patmjen/HALOS/logs
 
@@ -47,7 +50,7 @@ for jid in $JOB_IDS; do
         python run_inference.py $CKPT \
 		--model=vnet \
 		--crop_size=128 \
-		--data_dir=/work1/patmjen/HALOS/inference/data/big_covid \
-		--save_dir=/work1/patmjen/HALOS/inference/results/big_covid
+		--data_dir=/work1/patmjen/HALOS/inference/data/control \
+		--save_dir=/work1/patmjen/HALOS/inference/results/control
 done
 

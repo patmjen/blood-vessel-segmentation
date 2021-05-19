@@ -12,7 +12,7 @@
 #BSUB -W 24:00
 # specify system resources
 #BSUB -R "span[hosts=1]"
-#BSUB -R "rusage[mem=12GB]"
+#BSUB -R "rusage[mem=32GB]"
 #BSUB -R "select[gpu32gb]"
 ### -- set the email address --
 # please uncomment the following line and put in your e-mail address,
@@ -44,7 +44,7 @@ python run_training.py \
     vnet \
     --lr=1e-3 \
     --num_loader_workers=0 \
-    --data_dir=/work1/patmjen/HALOS/data/sparse3d/ \
+    --data_dir=/work1/patmjen/HALOS/data/big_sparse/ \
     --samples_per_volume=256 \
     --batch_size=12 \
     --crop_size=96 \
